@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # tools
     ninja-build \
     parallel \
-    curl wget \
+    curl wget cmake \
     unzip \
     graphviz \
     bsdmainutils \
@@ -46,14 +46,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
-ENV CMAKE_VERSION 3.25.3
+# ENV CMAKE_VERSION 3.25.3
 
-RUN wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.sh \
-    --no-check-certificate \
-    -q -O /tmp/cmake-install.sh \
-    && chmod u+x /tmp/cmake-install.sh \
-    && /tmp/cmake-install.sh --skip-license --prefix=/usr/local \
-    && rm /tmp/cmake-install.sh
+# RUN wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.sh \
+#     --no-check-certificate \
+#     -q -O /tmp/cmake-install.sh \
+#     && chmod u+x /tmp/cmake-install.sh \
+#     && /tmp/cmake-install.sh --skip-license --prefix=/usr/local \
+#     && rm /tmp/cmake-install.sh
 
 ENV CATCH3_VERSION 3.4.0
 
@@ -187,7 +187,7 @@ COPY --from=caffe_builder /root/caffe/python/caffe /usr/local/python_packages/ca
 ENV LC_ALL=C.UTF-8
 WORKDIR /workspace
 
-COPY maix_train_mx /workspace/
+COPY ./train /workspace
 
 # 更新包列表并安装必要的系统包
 RUN apt-get update && apt-get install -y \
@@ -211,8 +211,6 @@ RUN apt-get update && apt-get install -y \
     unzip \
     liblzma-dev \
     libncurses5-dev \
-    python3.8 \
-    python3.8-dev \
     python3-pip \
     binfmt-support \
     debootstrap \
@@ -226,9 +224,9 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # 更新pip并安装必要的Python包
-RUN python3.8 -m pip install --upgrade pip
-RUN python3.8 -m pip install jupyterlab ipywidgets jupyterlab_widgets ipycanvas Pillow numpy rich pickleshare
-RUN python3.8 -m pip install -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install jupyterlab ipywidgets jupyterlab_widgets ipycanvas Pillow numpy rich pickleshare
+
 
 
 # 清理不必要的文件
@@ -237,9 +235,14 @@ RUN python3.8 -m pip install -r requirements.txt
 # RUN chmod +x maix_train_mx/ncc.sh
 
 # 创建x86_64 chroot环境
-RUN mkdir -p /opt/chroot/x86_64
-RUN debootstrap --arch=amd64 focal /opt/chroot/x86_64 http://archive.ubuntu.com/ubuntu/
-RUN update-binfmts --enable qemu-x86_64
+# RUN mkdir -p /opt/chroot/x86_64
+# RUN debootstrap --arch=amd64 focal /opt/chroot/x86_64 http://archive.ubuntu.com/ubuntu/
+# RUN update-binfmts --enable qemu-x86_64
+
+RUN cd yolov5 && pip install -r requirements.txt
+
+RUN cp -rf ./tpu-mlir/python/tools/*.py /usr/local/bin/
+RUN pip install tpu_mlir
 
 # 运行JupyterLab
 CMD ["jupyter", "lab", "--ip=0.0.0.0", "--allow-root", "--no-browser"]
